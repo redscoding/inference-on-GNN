@@ -102,10 +102,23 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
             DG.add_edge(u, v)
         else:  # 50% 機率反轉 (v, u)
             DG.add_edge(v, u)
+
     print("show data-viz")
     data_viz(DG,G_array)
-    #確保遍歷順序
-    topo_order=list(nx.topological_sort(DG))
+    #0319修改 確保成為有向無環圖
+    while not nx.is_directed_acyclic_graph(DG):
+        cycle = nx.find_cycle(DG, orientation="original")
+        u,v,_ = random.choice(cycle)
+        print(f"修正: 反轉邊 {u} -> {v} 變成 {v} -> {u}")
+        DG.remove_edge(u,v)
+        DG.add_edge(v,u)
+    print("最終修正完成 線在是DAG")
+
+    node_order = list(range(n_nodes))
+    DG_array = nx.to_numpy_array(DG, nodelist=node_order)
+    data_viz(DG,DG_array)
+    # 確保遍歷順序
+    topo_order = list(nx.topological_sort(DG))
 
     nodes={}
     distributions={}
@@ -146,6 +159,11 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
 
             distributions[node_name] = ConditionalProbabilityTable(table, parent_distributions)
 
+    # 印出每個節點的機率分布 (CPT)
+    for node_name, distribution in distributions.items():
+        print(f"\nNode: {node_name}")
+        print(distribution)  # 直接印出離散分布或 CPT
+
     bn_model=BayesianNetwork(struct)
     node_obj={}
 
@@ -167,7 +185,7 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
 
 
 if __name__ == "__main__":
-    construct_bayesian_network('star',9,True)
+    construct_bayesian_network('loll',9,True)
     """
     G,G_array=generate_struct_mask('loll', 9, False)
     nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray', node_size=2000, font_size=16)
