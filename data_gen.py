@@ -1,8 +1,6 @@
 import numpy as np
 import networkx as nx
-from networkx import edges
-from pgmpy.models import BayesianNetwork
-from pgmpy.factors.discrete import TabularCPD
+from pomegranate import *
 from data_viz import data_viz
 import random
 from myConstants import ASYMMETRIC
@@ -93,10 +91,10 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
     """
     G, G_array =generate_struct_mask(struct, n_nodes, shuffle_nodes)#generate graph from networkx
 
-    W = np.random.normal(0., 1., (n_nodes, n_nodes))
-    W = (W+W.T)/2 #make adj asymmetric
-    b = np.random.normal(0,0.25,n_nodes)
-    W *=G_array
+    # W = np.random.normal(0., 1., (n_nodes, n_nodes))
+    # W = (W+W.T)/2 #make adj asymmetric
+    # b = np.random.normal(0,0.25,n_nodes)
+    # W *=G_array
     # make graph direct
     DG = nx.DiGraph()
     for u, v in G.edges():
@@ -106,39 +104,64 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
             DG.add_edge(v, u)
     print("show data-viz")
     data_viz(DG,G_array)
+    #確保遍歷順序
+    topo_order=list(nx.topological_sort(DG))
 
-    #build bayesian network
-    edges = [(f'X{u}', f'X{v}') for u, v in DG.edges()]
-    bn_model = BayesianNetwork(edges)
-    def compute_cpd(node, parents, DG, W, b):
-        bias = b[node]
-        values = []
-        parent_states = [[-1,+1]] * len(parents) if parents else [[]] #0318 change
-        for state_combo in np.array(np.meshgrid(*parent_states)).T.reshape(-1, len(parents)):
-            row = []
-            for state in [-1, +1]:
-                energy = bias * state
-                for i, parent in enumerate(parents):
-                    weight = W[parent][node]  # 注意：W 需對應方向
-                    energy += weight * state * state_combo[i]
-                prob = 1 / (1 + np.exp(-energy))  # sigmoid
-                row.append(prob)
-            values.append(row)
-        return TabularCPD(variable=f'X{node}', variable_card=2,
-                          values=values, evidence=[f'X{p}' for p in parents],
-                          evidence_card=[2] * len(parents))
-    cpds=[]
-    for node in DG.nodes():
+    nodes={}
+    distributions={}
+
+    for node in topo_order:
         parents = list(DG.predecessors(node))
-        if not parents:
-            cpds.append(TabularCPD(variable=f'X{node}',variable_card=2, values=[[0.5],[0.5]]))
+        node_name = f'X{node}'
+        print(parents)
+        #確保所有父節點的分布都生成了
+        for parent in parents:
+            parent_name = f'X{parent}'
+            if parent_name not in distributions:
+                # 如果父節點分佈尚未生成，立即生成
+                prob_1 = np.random.uniform(0.1, 0.5)
+                distributions[parent_name] = DiscreteDistribution({'1': prob_1, '0': 1 - prob_1})
+
+        if not parents:  # 無父節點
+            # 類似你的範例 a 和 c
+            prob_1 = np.random.uniform(0.1, 0.5)  # 隨機生成概率
+            distributions[node_name] = DiscreteDistribution({'1': prob_1, '0': 1 - prob_1})
         else:
-            cpds.append(compute_cpd(node, parents, DG, W, b))
+            # 有父節點，生成條件概率表
+            parent_names = [f'X{p}' for p in parents]
+            parent_distributions = [distributions[p] for p in parent_names]
 
-    bn_model.add_cpds(*cpds)
-    assert bn_model.check_model(), "Bayesian Network is invalid!"
-    return model
+            # 根據父節點數量生成概率表
+            num_parents = len(parents)
+            states = ['0', '1']
+            all_combinations = list(np.array(np.meshgrid(*([states] * num_parents))).T.reshape(-1, num_parents))
 
+            table = []
+            for combo in all_combinations:
+                for state in states:
+                    # 隨機生成概率，類似你的範例
+                    prob_1 = np.random.uniform(0.1, 0.9)  # 隨機概率
+                    table.append(list(combo) + [state, prob_1])
+                    table.append(list(combo) + ['1' if state == '0' else '0', 1 - prob_1])
+
+            distributions[node_name] = ConditionalProbabilityTable(table, parent_distributions)
+
+    bn_model=BayesianNetwork(struct)
+    node_obj={}
+
+    for node_name, distribution in distributions.items():
+        node = Node(distribution, name=node_name)
+        node_obj[node_name] = node
+        bn_model.add_node(node)
+
+    for node in DG.nodes():
+        node_name = f'X{node}'
+        for parent in DG.predecessors(node):
+            parent_name = f'X{parent}'
+            bn_model.add_edge(node_obj[parent_name],node_obj[node_name])
+
+    bn_model.bake()
+    return bn_model, DG
 
 
 
