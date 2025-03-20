@@ -3,6 +3,7 @@ import networkx as nx
 from pomegranate import *
 from data_viz import data_viz
 import random
+from bn_to_fac import bn_to_fac
 from myConstants import ASYMMETRIC
 #from data_structs import BinaryMRF
 import matplotlib.pyplot as plt
@@ -179,13 +180,13 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
             bn_model.add_edge(node_obj[parent_name],node_obj[node_name])
 
     bn_model.bake()
-    return bn_model, DG
+    return bn_to_fac(bn_model, DG)
 
 
 
 
 if __name__ == "__main__":
-    construct_bayesian_network('loll',9,True)
+    construct_bayesian_network('bipart',9,True)
     """
     G,G_array=generate_struct_mask('loll', 9, False)
     nx.draw(G, with_labels=True, node_color='lightblue', edge_color='gray', node_size=2000, font_size=16)
