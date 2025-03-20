@@ -1,7 +1,5 @@
 from hashlib import algorithms_available
 
-import tensorflow_datasets as tfds
-import tensorflow as tf
 import numpy as np
 from pgmpy.inference import BeliefPropagation
 from tqdm import tqdm
@@ -20,6 +18,7 @@ size_range=np.arange(low,high+1)
 
 #create new graph
 graphs=[]
+algo=[]
 for _ in range(num):
     #sample n_nodes from range
     n_nodes = np.random.choice(size_range)
@@ -29,9 +28,10 @@ for _ in range(num):
 
 #chosing inference algorithm
 #defult using bp
-bp = BeliefPropagation(graphs)
-marginal_X1 = bp.query(variables=['X1'])
-print(marginal_X1)
+graph_iterators = tqdm(graphs)
+for graph in graph_iterators:
+    algo.append(BeliefPropagation(graph))
+
 
 """
 

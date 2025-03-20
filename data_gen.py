@@ -79,7 +79,7 @@ def generate_struct_mask(struct, n_nodes, shuffle_nodes):
     return g,np_arr_g.astype(int)  #return graph obj and array
 
 def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
-    """Construct one binary MRF graphical model
+    """
 
     Arguments:
         struct {string} -- structure of the graph
@@ -165,7 +165,7 @@ def construct_bayesian_network(struct, n_nodes, shuffle_nodes=True):
         print(f"\nNode: {node_name}")
         print(distribution)  # 直接印出離散分布或 CPT
 
-    bn_model=BayesianNetwork(struct)
+    bn_model=BayesianNetwork()
     node_obj={}
 
     for node_name, distribution in distributions.items():
