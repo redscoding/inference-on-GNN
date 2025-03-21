@@ -1,13 +1,13 @@
 from hashlib import algorithms_available
 
 import numpy as np
-from pgmpy.inference import BeliefPropagation
+from BeliefPropagation import BeliefPropagation
 from tqdm import tqdm
 from data_gen import construct_bayesian_network
-#from BeliefPropagation import BeliefPropagation
+from BeliefPropagation import run_belief_propagation
 low=9 #range of sizes, int the form 10_20
 high=9
-num=3 #number of graph to generate
+num=1 #number of graph to generate
 graph_struct='star' #type of graph structure, such as star of fc
 # algorithm to use for labeling, can be exact\bp\mcmc
 #label_prop for label propagation, or label_sg for subgraph labeling
@@ -30,7 +30,7 @@ for _ in range(num):
 #defult using bp
 graph_iterators = tqdm(graphs)
 for graph in graph_iterators:
-    algo.append(BeliefPropagation(graph))
+    algo.append(run_belief_propagation(graph))
 
 
 """
